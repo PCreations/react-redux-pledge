@@ -1,0 +1,1 @@
+export const RESOLVE_PLEDGES_ACTION = 'react-redux-pledge/RESOLVE_PLEDGES'
