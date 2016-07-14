@@ -24,20 +24,22 @@ You already know what a `reducer`, an `action creator` or a `selector` is. React
 ```javascript
 /* A typical pledge object */
 const pledge = {
+    name,
     isResolved(state) { ... },
     getAction() { ... }
 }
 ```
-
+`name` is a unique identifier for this pledge.
 `isResolved` receive the global state as an argument, you can select a slice of the state and return `true` if this slice need to be considered valid of `false` otherwise.
 `getAction` should returns the action that need to be dispatched in order to make the slice of the state handled by this *pledge* valid (typically an action creator initiating an api request).
 
-To create a pledge, you can use the `createPledge` helper that accepts the two functions above as arguments :
+To create a pledge, you can use the `createPledge` helper that accepts the `name` argument and the two functions above :
 
 ```javascript
 import { createPledge } from 'react-redux-pledge'
 
 const myPledge = createPledge(
+    'myPledge',
     (state) => is resolved condition
     () => { type: 'SOME_ACTION_TYPE' }
 )
@@ -147,7 +149,7 @@ function* root() {
 }
 ```
 
-In this example, The `TodoList` shouldn't have to worry about data fetching, and that's the whole point of using `pledges`, let's rewrite only the relevant part with `react-redux-pledge`. First, we need to define a `pledge` in the duck :
+In this example, The `TodoList` shouldn't have to worry about it's data dependencies and relevant fetching, and that's the whole point of using `pledges`, let's rewrite only the relevant part with `react-redux-pledge`. First, we need to define a `pledge` in the duck :
 
 todos.js
 ```javascript
@@ -156,6 +158,7 @@ import { createPledge } from 'react-redux-pledge'
 [...]  // same code as above
 
 const pledgeOnAllTodosFetched = createPledge(
+    'pledgeOnAllTodosFetched',
     (state) => state.areAllTodosFetched,
     () => fetchAll()
 )
@@ -182,18 +185,14 @@ export default connect(
 )(enhance(TodoList))
 ```
 
-sagas.js
+configureStore.js
 ```
-import { pledgeSaga } from 'react-redux-pledge'
-
-[...]  // same code as above
-
-function* root() {
-  yield [
-    fork(watchFetchAllTodosRequested)
-    fork(pledgeSaga)
-  ]
-}
+import { pledgeMiddleware } from 'react-redux-pledge'
+const store = createStore(
+    [...]
+    applyMiddleware(pledgesMiddleware)
+    [...]
+)
 ```
 
 # HOW DOES IT WORK ?
@@ -216,7 +215,7 @@ Accepts an **array of array** of pledges to be resolved before the component can
 withPledges([[pledge1,pledge2], [pledge3]], Spinner)(BaseComponent)  //pledge3 will be resolved only after pledge1 and pledge2 are resolved
 ```
 
-Instead of a plain pledge object, you can pass a function, this fonction will be passed the `props` of the component of which this pledge is attached, you can think of this function as a pledge factory. Example:
+Instead of a plain pledge object, you can pass a function, this fonction will be passed the `initialProps`  of the component of which this pledge is attached to and the current `state`, you can think of this function as a pledge factory. Example:
 
 todo.js
 ```js
@@ -225,7 +224,7 @@ import Spinner from './someSpinnerComponent'
 const Todo = ({ id, text }) => <li>`id: ${id}, text: ${text}`</li>
 
 const enhance = withPledges([[
-    (props) => createPledgeOnVoucherPrototype(props.id)
+    (state, initialProps) => createPledgeOnTodo(initialProps.id)
 ]], Spinner)
 
 export default connect((state, { id }) => getTodo(state, id))(enhance(Todo))
@@ -237,6 +236,7 @@ import { createPledge } from 'react-redux-pledge'
 
 /* here we export a pledge factory instead of a pledge */
 export const createPledgeOnTodo = (id) => createPledge(
+    `pledgeOnTodo${id}`,
     (state) => typeof getTodo(state, id) !== "undefined",
     () => fetchTodo(id)
 )
@@ -246,28 +246,9 @@ export const createPledgeOnTodo = (id) => createPledge(
 Actions to be dispatched are retrieved from pledges, then, a special `RESOLVE_PLEDGES` action is dispatched, containing the actions to dispatch in order to resolve these pledges. **Not triggering directly the actions returned by the pledges lets us dispatch actions only once, without worrying about multiple pledges requesting for the same actions**
 
 
-### `pledgeSaga`
-
-The pledgeSaga is responsible of dispatching actions that pledges need to be resolved. Actions are only dispatched once, here is the pledgeSaga implementation :
-
-```js
-function *pledgeSaga() {
-    let actionsAlreadyPut = []
-    while (true) {
-        let { actions } = yield take(RESOLVE_PLEDGES_ACTION)
-        actions = actions.filter(action => !_includes(actionsAlreadyPut, action, _isEqual))
-        for (let action of actions) {
-            yield put(action)
-            actionsAlreadyPut.push(action)
-        }
-    }
-}
-```
-
-
 ### `createPledge`
 
-The `createPledge(isResolved, getAction)` accepts two functions :
-
+The `createPledge(isResolved, getAction)` accepts the pledge's name as a first argument and two functions :
+ - `name` uniquely identifies this pledge for this component
  - `isResolved(state)` should returns if this pledge is valid depending on the `state` received as argument.
  - `getAction()` should return the action that need to be dispatched in order to make the state valid for this pledge
