@@ -1,4 +1,5 @@
-const createPledge = (isResolved, getAction) => ({
+const createPledge = (name, isResolved, getAction) => ({
+    name,
     isResolved,
     getAction
 })
