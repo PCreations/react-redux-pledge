@@ -187,7 +187,7 @@ export default connect(
 
 configureStore.js
 ```
-import { pledgeMiddleware } from 'react-redux-pledge'
+import { pledgesMiddleware } from 'react-redux-pledge'
 const store = createStore(
     [...]
     applyMiddleware(pledgesMiddleware)
@@ -248,7 +248,7 @@ Actions to be dispatched are retrieved from pledges, then, a special `RESOLVE_PL
 
 ### `createPledge`
 
-The `createPledge(isResolved, getAction)` accepts the pledge's name as a first argument and two functions :
+The `createPledge(name, isResolved, getAction)` accepts the pledge's name as a first argument and two functions :
  - `name` uniquely identifies this pledge for this component
  - `isResolved(state)` should returns if this pledge is valid depending on the `state` received as argument.
  - `getAction()` should return the action that need to be dispatched in order to make the state valid for this pledge
