@@ -41,7 +41,7 @@ import { createPledge } from 'react-redux-pledge'
 const myPledge = createPledge(
     'myPledge',
     (state) => is resolved condition
-    () => { type: 'SOME_ACTION_TYPE' }
+    () => ({ type: 'SOME_ACTION_TYPE' })
 )
 ```
 
